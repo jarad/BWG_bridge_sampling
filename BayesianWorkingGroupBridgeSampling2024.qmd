@@ -192,11 +192,3 @@ vignette("bridgesampling_stan_ttest", package = "bridgesampling")
 
 or [on this page](https://cran.r-project.org/web/packages/bridgesampling/vignettes/bridgesampling_stan_ttest.html).
 
-
-
-# Summary
-
-## Summary
-
-Bridge sampling provides a method to estimate normalizing constants
-(i.e. marginal likelihoods) from (Markov chain) Monte Carlo samples. 
