@@ -1,0 +1,202 @@
+---
+title: "Bridge Sampling"
+author: "Jarad Niemi"
+format: 
+  revealjs:
+    html-math-method: katex
+    controls: true
+editor: visual
+---
+
+## Publications
+
+- Meng and Wong (1996) Simulating Ratios of Normalizing Constants via a Simple Identity: A Theoretical Exploration. Statistica Sinica 6: 831-860
+- Meng and Schilling (2002) Warp Bridge Sampling. Journal of Computational and Graphical Statistics 11(3): 552-586
+- Gronau, Singmann, and Wagenmakers (2020) bridgesampling: An R Package for Estimating Normlizing Constants. Journal of Statistical Software 92(10)
+- Gronau et. al. (2017) A Tutorial on Bridge Sampling. Journal of Mathematical Psychology 81: 80-97
+
+
+## Bayesian Parameter Estimation
+
+Recall Bayesian parameter estimation
+
+$$p(\theta|y) = \frac{p(y|\theta)p(\theta)}{p(y)} =
+\frac{p(y|\theta)p(\theta)}{\int p(y|\theta)p(\theta)  d\theta}
+\propto p(y|\theta)p(\theta)$$
+
+where most rely on sampling from this posterior and thus avoid
+computing the normalizing constant in the denominator.
+
+
+## Bayesian Model Comparison
+
+When we compare two models ($M_1$ and $M_2$) for a our data, 
+we can compare model support using posterior odds (or probabilities)
+$$
+\frac{p(M_1|y)}{p(M_2|y)} = \frac{p(y|M_1)}{p(y|M_2)} 
+\times \frac{p(M_1)}{p(M_2)}$$
+which depend on Bayes factors which depend on the marginal likelihood
+$p(y|M_i)$. 
+
+
+## Bayesian Model Averaging
+
+To perform Bayesian Model Averaging of a collection of models
+$M_i$, $i\in \{1,2,\ldots,m\}$, we utilize posterior model probabilities
+$$p(M_i|y) = \frac{p(y|M_i)}{\sum_{j=1}^m p(y|M_j)p(M_j)} \times p(M_i)$$
+which depend on the marginal likelihood $p(y|M_i)$. 
+
+## Marginal likelihood
+
+As a reminder, the marginal likelihood is the normalizing constant, 
+i.e. 
+$$p(y) = \int p(y|\theta)p(\theta) d\theta = E_{p(\theta)}[p(y|\theta)]$$
+where we integrate out the model parameters of the data model over the
+prior distribution. 
+
+
+# Monte Carlo estimates
+
+## Naive Monte Carlo estimate
+
+A naive Monte Carlo estimate of $p(y)$ is 
+
+$$
+p(y) \approx \frac{1}{N} \sum_{i=1}^N p(y|\tilde{\theta_i}),\quad \tilde{\theta}_i \sim p(\theta)
+$$
+which works okay if there is strong overlap between posterior and prior. 
+
+
+## Importance sampling estimate
+
+Recall that
+$$
+p(y) = \int \frac{p(y|\theta)p(\theta)}{g(\theta)} g(\theta) \,d\theta 
+= E_{g(\theta)}\left[\frac{p(y|\theta)p(\theta)}{g(\theta)}\right]
+$$
+. . .
+
+which leads to the importance sampling estimator
+
+$$
+p(y) \approx \frac{1}{N} \sum_{i=1}^N \frac{p(y|\tilde{\theta_i})p(\tilde{\theta}_i)}{g(\tilde{\theta}_i)},\quad \tilde{\theta}_i \sim g(\theta).
+$$
+
+## Generalized harmonic mean estimator
+
+The marginal likelihood can also be written
+$$
+\frac{1}{p(y)} = \int \frac{g(\theta)}{p(y|\theta)p(\theta)} p(\theta|y) d\theta 
+= E_{p(\theta|y)}\left[\frac{g(\theta^*_i)}{p(y|\theta^*_i)p(\theta^*_i)}\right]
+$$
+
+$$
+p(y) \approx \left[\frac{1}{N} \sum_{i=1}^N \frac{g(\theta^*_i)}{p(y|\theta^*_i)p(\theta^*_i)}\right]^{-1},\quad \theta^*_i \sim p(\theta|y).
+$$
+
+
+# Bridge sampling
+
+## Bridge sampling estimator
+
+Here is the bridge sampling estimator of a marginal likelihood
+$$p(y) 
+= \frac{\int p(y|\theta)p(\theta)h(\theta)g(\theta) \,d\theta}{\int \frac{p(y|\theta)p(\theta)}{p(y)} h(\theta)g(\theta) \,d\theta}
+= \frac{\int p(y|\theta)p(\theta)h(\theta)\, g(\theta) \,d\theta}{\int  h(\theta)g(\theta) \quad p(\theta|y) \,d\theta}
+= \frac{E_{g(\theta)}\left[ h(\theta) p(y|\theta) p(\theta) \right]}{E_{p(\theta|y)}\left[ h(\theta) g(\theta) \right]}
+$$
+
+. . .
+
+which results in the following estimator
+$$
+p(y) \approx \frac{\frac{1}{n_2} \sum_{i=1}^{n_2} h(\tilde{\theta}_j)p(y|\tilde{\theta}_j)p(\tilde{\theta}_j)}{\frac{1}{n_1} \sum_{j=1}^{n_1} h(\theta^*_i)g(\theta^*_i)},
+\quad \tilde{\theta}_j \sim g(\theta), \, \theta^* \sim p(\theta|y)
+$$
+
+. . .
+
+where
+
+- $g(\theta)$ is a proposal distribution
+- $h(\theta)$ is a bridge function.
+
+
+## Bridge sampling proposal
+
+- multivariate normal with mean and covariance equal to posterior sample quantities
+  - transform parameters for the whole real line
+- warping the posterior: make posterior a standard multivariate normal
+  - matches first three moments
+  - twice as precise, but takes twice as long
+  
+
+## Bridge function
+
+Meng and Wong (1996) propose the following bridge function which they show is 
+optimal in the sense that it minimizes relative mean-squared error of the 
+estimator:
+$$
+h(\theta) = C \cdot \frac{1}{s_1p(y|\theta)p(\theta) + s_2 p(y)g(\theta)}
+$$
+where $s_i = n_i / (n_1 + n_2)$ and $C$ is some constant that cancels.
+
+
+## Bridge sampling algorithm
+
+Start with $\hat{p}(y)^{(0)}$, iterate
+$$
+\hat{p}(y)^{(t+1)} = \frac{\frac{1}{n_2} \sum_{j=1}^{n_2} \frac{l_{2,j}}{s_1 l_{2,j} + s_2 \hat{p}(y)^{(t)}}}{\frac{1}{n_1} \sum_{i=1}^{n_1} \frac{1}{s_1 l_{1,i} + s_2 \hat{p}(y)^{(t)}}}
+$$
+
+. . .
+
+where
+$$
+l_{1,i} = \frac{p(y|\theta^*_i)p(\theta^*_i)}{g(\theta^*_i)}
+\qquad
+l_{2,j} = \frac{p(y|\tilde{\theta}_j)p(\tilde{\theta}_j)}{g(\tilde{\theta}_j)}.
+$$
+
+
+
+
+# Example
+
+## Bayesian paired t-test
+
+Consider the following models for difference $Y_i$ for individual $i$:
+
+- $M0: Y_i \stackrel{ind}{\sim} N(0,\sigma^2)$
+- $M1: Y_i \stackrel{ind}{\sim} N(\sigma\delta,\sigma^2)$
+
+where $\delta$ is the standardized effect size. 
+
+. . .
+
+Priors are
+$$p(\sigma^2) \propto 1/\sigma^2 \qquad \delta \sim Ca(0,r).$$
+
+. . .
+
+The goal is the Bayes Factor for $M_1:M_0$.
+
+
+## Stan and R Analysis
+
+Looking at this vignette
+
+```{r, eval=FALSE, echo=TRUE}
+vignette("bridgesampling_stan_ttest", package = "bridgesampling")
+```
+
+or [on this page](https://cran.r-project.org/web/packages/bridgesampling/vignettes/bridgesampling_stan_ttest.html).
+
+
+
+# Summary
+
+## Summary
+
+Bridge sampling provides a method to estimate normalizing constants
+(i.e. marginal likelihoods) from (Markov chain) Monte Carlo samples. 
